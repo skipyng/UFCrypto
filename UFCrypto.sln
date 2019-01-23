@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26730.10
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "PythonApplication1", "PythonApplication1\PythonApplication1.pyproj", "{322D7F59-524E-4995-B4CD-9F0525818990}"
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "UFCrypto", "UFCrypto\UFCrypto.pyproj", "{3768FDA3-9C00-472F-AC00-26837A812532}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,8 +11,8 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{322D7F59-524E-4995-B4CD-9F0525818990}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{322D7F59-524E-4995-B4CD-9F0525818990}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3768FDA3-9C00-472F-AC00-26837A812532}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3768FDA3-9C00-472F-AC00-26837A812532}.Release|Any CPU.ActiveCfg = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
