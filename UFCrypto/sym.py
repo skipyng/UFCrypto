@@ -1,46 +1,78 @@
-import json
-import os
-from base64 import b64encode
+import json, os, sys
+from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
+from Crypto.Util.Padding import pad, unpad
 
 class Crittografia:
-    def __init__():
+    def __init__(self):
+        self.__key = None
         pass
-    def __init__(self, auth:bool, keyLen:int):
-        self.__auth = auth
-        self.__kLen = keyLen
 
-    def newKey(self):
-        self.__key = get_random_bytes(self.__kLen)
+    def newKey(self,len):
+        if len % 16 == 0: # Gestione eccezione lunghezza chiave (multiplo di 16) #
+            self.__key = get_random_bytes(len)
+        else:
+            print("Errore nella generazione della chiave. Input non valido")
+            self.__key = None
     
 
     def crypt(self,plaintext):
-        if self.__auth:
+        if self.__auth: # Crittografia in modalità CON AUTENTICAZIONE #
             cipher = AES.new(self.__key, AES.MODE_CCM)
+            self.__ciphertext, tag = cipher.encrypt_and_digest(bytes(plaintext,'utf-8'))
+            self.__jsonKeys = ['nonce','ciphertext','tag']
+            self.__jsonVal = [cipher.nonce, self.__ciphertext, tag]
             
+        else: # Crittografia in modalità SENZA AUTENTICAZIONE #
+            cipher = AES.new(self.__key,AES.MODE_CBC)
+            self.__ciphertext = cipher.encrypt(pad(bytes(plaintext,'utf-8'),AES.block_size))
+            self.__jsonKeys = ['iv','ciphertext']
+            self.__jsonVal = [cipher.iv, self.__ciphertext]
+    
+    def decrypt(self,inputObj):
+        if self.__auth:
+            cipher = AES.new(self.__key,AES.MODE_CCM,nonce=b64decode(inputObj['nonce']))
+            self.__plaintext = str(cipher.decrypt_and_verify(b64decode(inputObj['ciphertext']),b64decode(inputObj['tag'])),'utf-8')
         else:
-            #todo#
-
-        self.__ciphertext, self.__tag = cipher.encrypt_and_digest(bytes(plaintext,'utf-8'))
-        self.__nonce = cipher.nonce
-     
+            cipher = AES.new(self.__key,AES.MODE_CBC,b64decode(inputObj['iv']))
+            self.__plaintext = str(unpad(cipher.decrypt(b64decode(inputObj['ciphertext'])),AES.block_size),'utf-8')
+    # Popolamento oggetto JSON #
     def serialize(self):
-        json_keys = ['nonce','ciphertext','tag']
-        json_values = [ b64encode(x).decode('utf-8') for x in (self.__nonce, self.__ciphertext, self.__tag) ]
-        return json.dumps(dict(zip(json_keys,json_values)))
+        json_values = [ b64encode(x).decode('utf-8') for x in self.__jsonVal ]
+        return json.dumps(dict(zip(self.__jsonKeys,json_values)))
+
+    def deserialize(self,input):
+        tmp = json.loads(input)
+        if tmp < 3:
+            self.__auth = False
+        else:
+            self.__auth = True
+        return tmp
+
+
+    # Proprietà classe #
     @property
     def key(self):
         return self.__key
+    @key.setter
+    def key(self,value):
+        self.__key = bytes(value,'utf-8')
     @property
     def ciphertext(self):
         return self.__ciphertext
     @property
     def auth(self):
         return self.__auth
+    @auth.setter
+    def auth(self,value):
+        self.__auth = value
     @property
     def resJSON(self):
         return self.serialize()
+    @property
+    def plaintext(self):
+        return self.__plaintext    
 
 
 # Messaggi "prompt" per l'utente #
@@ -77,19 +109,26 @@ def readFile(path):
 
 
 clear = lambda: os.system('cls')
+obj = Crittografia()
 # MAIN #
 while True:
+    clear()
     tmp = showPrompt("init")
     if tmp == 1:
         clear()
         print("\n\t------------ CHIAVE ------------ ")
         path = showPrompt("path")
-        len = int(input("Inserisci la lunghezza della chiave: "))
         clear()
-        obj = Crittografia(True,len)
-        obj.newKey()
-        saveFile(path,b64encode(obj.key).decode('utf-8'))
-        input("File generato!\nPremi INVIO per continuare")
+        try: # Controllo se file chiave esiste #
+            obj.key = readFile(path)
+            print("File trovato. Importazione chiave...")
+        except: # Genero nuova chiave #
+            print("File non trovato --- Genero nuova chiave")
+            while obj.key == None: # Gestione eccezione lunghezza chiave (multiplo di 16) #
+                len = int(input("Inserisci la lunghezza della chiave: "))
+                obj.newKey(len)
+            saveFile(path,b64encode(obj.key).decode('utf-8'))
+            input("File generato!\nPremi INVIO per continuare")
         
         tmp2 = showPrompt("crypt")
         clear()
@@ -99,11 +138,35 @@ while True:
         elif tmp2 == 2:
             obj.auth = False
 
+        # Cifratura #
         obj.crypt(input("Testo da cifrare: "))
         clear()
+        # Salvataggio #
         print("\n\t------------ CIFRATO ------------ ")
         path = showPrompt("path")
         saveFile(path,obj.resJSON)
+        print("File criptato generato in: ["+os.getcwd()+path+"\\]")
+        input("Premi INVIO per continuare")
 
+    elif tmp == 2:
+        clear()
+        print("\n\t------------ CHIAVE ------------ ")
+        path = showPrompt("path")
+        clear()
+      #  try: # Controllo se file chiave esiste #
+        obj.key = readFile(path)
+        print("File trovato. Importazione chiave...")
+        print("\n\t------------ CIFRATO ------------ ")
+    #        try:
+        tmp = obj.deserialize(readFile(showPrompt("path")))
+        obj.decrypt(tmp)
+        print("Testo decriptato: "+obj.plaintext)
+        input("Premi INVIO per continuare")
+     #       except:
+    #            input("File non trovato. Premi INVIO per continuare")
+    #    except:
+      #      input("Chiave non trovata. Premi INVIO per continuare")
     elif tmp == 3:
         break
+    else:
+        print("Parametro non valido")
