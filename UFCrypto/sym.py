@@ -44,7 +44,7 @@ class Crittografia:
 
     def deserialize(self,input):
         tmp = json.loads(input)
-        if tmp < 3:
+        if len(tmp) < int(3):
             self.__auth = False
         else:
             self.__auth = True
@@ -107,7 +107,6 @@ def readFile(path):
 
 #########################################
 
-
 clear = lambda: os.system('cls')
 obj = Crittografia()
 # MAIN #
@@ -153,19 +152,21 @@ while True:
         print("\n\t------------ CHIAVE ------------ ")
         path = showPrompt("path")
         clear()
-      #  try: # Controllo se file chiave esiste #
-        obj.key = readFile(path)
-        print("File trovato. Importazione chiave...")
-        print("\n\t------------ CIFRATO ------------ ")
-    #        try:
-        tmp = obj.deserialize(readFile(showPrompt("path")))
-        obj.decrypt(tmp)
-        print("Testo decriptato: "+obj.plaintext)
-        input("Premi INVIO per continuare")
-     #       except:
-    #            input("File non trovato. Premi INVIO per continuare")
-    #    except:
-      #      input("Chiave non trovata. Premi INVIO per continuare")
+        try: # Controllo se file chiave esiste #
+            obj.key = readFile(path)
+            print("File trovato. Importazione chiave...")
+            print("\n\t------------ CIFRATO ------------ ")
+            try:
+                tmp = obj.deserialize(readFile(showPrompt("path")))
+                obj.decrypt(tmp)
+                print("Testo decriptato: "+obj.plaintext)
+                input("Premi INVIO per continuare")
+            except Exception as e:
+                print(str(e))
+            #    input("File non trovato. Premi INVIO per continuare")
+        except Exception as e:
+            print(str(e))
+          #  input("Chiave non trovata. Premi INVIO per continuare")
     elif tmp == 3:
         break
     else:
