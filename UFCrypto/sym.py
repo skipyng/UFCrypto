@@ -108,9 +108,10 @@ def readFile(path):
 #########################################
 
 clear = lambda: os.system('cls')
-obj = Crittografia()
+
 # MAIN #
 while True:
+    obj = Crittografia()
     clear()
     tmp = showPrompt("init")
     if tmp == 1:
@@ -144,7 +145,7 @@ while True:
         print("\n\t------------ CIFRATO ------------ ")
         path = showPrompt("path")
         saveFile(path,obj.resJSON)
-        print("File criptato generato in: ["+os.getcwd()+path+"\\]")
+        print("File criptato generato in: ["+os.getcwd()+"\\"+path+"]")
         input("Premi INVIO per continuare")
 
     elif tmp == 2:
@@ -159,8 +160,8 @@ while True:
             try:
                 tmp = obj.deserialize(readFile(showPrompt("path")))
                 obj.decrypt(tmp)
-                print("Testo decriptato: "+obj.plaintext)
-                input("Premi INVIO per continuare")
+                print("\nTesto decriptato: "+obj.plaintext)
+                input("\nPremi INVIO per continuare")
             except Exception as e:
                 print(str(e))
             #    input("File non trovato. Premi INVIO per continuare")
@@ -171,3 +172,4 @@ while True:
         break
     else:
         print("Parametro non valido")
+    del obj
