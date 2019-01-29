@@ -11,12 +11,11 @@ from Crypto.Util.Padding import pad, unpad
 class Crittografia:
     def __init__(self):
         self.__key = None
-        pass
 
     def newKey(self, leng):
         # Gestione eccezione lunghezza chiave (multiplo di 16) #
-        if leng % 16 == 0:
-            self.__key = get_random_bytes(len)
+        if len % 16 == 0:
+            self.__key = get_random_bytes(leng)
         else:
             print("Errore nella generazione della chiave. Input non valido")
             self.__key = None
@@ -95,7 +94,7 @@ class Crittografia:
 # Messaggi "prompt" per l'utente #
 def showPrompt(type):
     if type == "init":
-        return int(input("""
+        return int(raw_input("""
         Seleziona l'attività:
             1 - Cripta
             2 - Decripta
@@ -103,13 +102,13 @@ def showPrompt(type):
             \n> """))
 
     elif type == "crypt":
-        return int(input("""
+        return int(raw_input("""
         Seleziona in che modo criptare:
             1 - Con autenticazione
             2 - Senza autenticazione
             \n> """))
     elif type == "path":
-        return input("\tInserisci il percorso/nome del file \n\n\tPercorso corrente: \n\t[" + os.getcwd() + "]\n>")
+        return raw_input("\tInserisci il percorso/nome del file \n\n\tPercorso corrente: \n\t[" + os.getcwd() + "]\n>")
 
 #########################################
 
@@ -128,7 +127,11 @@ def readFile(path):
 #########################################
 
 
-def clear(): return os.system('cls')
+def clear():
+    if os.name == 'nt':
+        return os.system('cls')
+    else:
+        return os.system('clear')
 
 
 # MAIN #
@@ -142,16 +145,16 @@ while True:
         path = showPrompt("path")
         clear()
         try:  # Controllo se file chiave esiste #
-            obj.key = b64decode(readFile(path))
+            obj.key = b64encode(readFile(path))
             print("File trovato. Importazione chiave...")
         except:  # Genero nuova chiave #
             print("File non trovato --- Genero nuova chiave")
             # Gestione eccezione lunghezza chiave (multiplo di 16) #
             while obj.key == None:
-                leng = int(input("Inserisci la lunghezza della chiave: "))
+                leng = int(raw_input("Inserisci la lunghezza della chiave: "))
                 obj.newKey(leng)
             saveFile(path, b64encode(obj.key).decode('utf-8'))
-            input("File generato!\nPremi INVIO per continuare")
+            raw_input("File generato!\nPremi INVIO per continuare")
 
         tmp2 = showPrompt("crypt")
         clear()
@@ -162,14 +165,14 @@ while True:
             obj.auth = False
 
         # Cifratura #
-        obj.crypt(input("Testo da cifrare: "))
+        obj.crypt(raw_input("Testo da cifrare: "))
         clear()
         # Salvataggio #
         print("\n\t------------ CIFRATO ------------ ")
         path = showPrompt("path")
         saveFile(path, obj.resJSON)
         print("File criptato generato in: ["+os.getcwd()+"\\"+path+"]")
-        input("Premi INVIO per continuare")
+        raw_input("Premi INVIO per continuare")
 
     elif tmp == 2:
         clear()
@@ -184,15 +187,14 @@ while True:
                 tmp = obj.deserialize(readFile(showPrompt("path")))
                 obj.decrypt(tmp)
                 print("\nTesto decriptato: "+obj.plaintext)
-                input("\nPremi INVIO per continuare")
+                raw_input("\nPremi INVIO per continuare")
             except Exception as e:
                 print(str(e))
-            #    input("File non trovato. Premi INVIO per continuare")
+            #    raw_input("File non trovato. Premi INVIO per continuare")
         except Exception as e:
             print(str(e))
-          #  input("Chiave non trovata. Premi INVIO per continuare")
+          #  raw_input("Chiave non trovata. Premi INVIO per continuare")
     elif tmp == 3:
         break
     else:
         print("Parametro non valido")
-    del obj
