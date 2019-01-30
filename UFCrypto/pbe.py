@@ -6,46 +6,49 @@ from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
+from Crypto.Protocol import KDF
+from getpass import getpass
 
 
 class Crittografia:
     def __init__(self):
         self.__key = None
+        self.__salt = None
 
     def newKey(self, leng):
         # Gestione eccezione lunghezza chiave (multiplo di 16) #
-        if len % 16 == 0:
+        if leng % 16 == 0:
             self.__key = get_random_bytes(leng)
         else:
             print("Errore nella generazione della chiave. Input non valido")
             self.__key = None
 
+    def Password(self, psw, saltIn:bytes=get_random_bytes(16)):
+        self.__salt = saltIn
+        self.__key = KDF.scrypt(psw,self.__salt,32,16384,8,1)
+
     def crypt(self, plaintext):
         if self.__auth:  # Crittografia in modalità CON AUTENTICAZIONE #
             cipher = AES.new(self.__key, AES.MODE_CCM)
-            self.__ciphertext, tag = cipher.encrypt_and_digest(
-                bytes(plaintext, 'utf-8'))
-            self.__jsonKeys = ['nonce', 'ciphertext', 'tag']
-            self.__jsonVal = [cipher.nonce, self.__ciphertext, tag]
+            self.__ciphertext, tag = cipher.encrypt_and_digest(bytes(plaintext, 'utf-8'))
+            self.__jsonKeys = ['nonce', 'ciphertext', 'tag','salt']
+            self.__jsonVal = [cipher.nonce, self.__ciphertext, tag,self.__salt]
 
         else:  # Crittografia in modalità SENZA AUTENTICAZIONE #
             cipher = AES.new(self.__key, AES.MODE_CBC)
-            self.__ciphertext = cipher.encrypt(
-                pad(bytes(plaintext, 'utf-8'), AES.block_size))
-            self.__jsonKeys = ['iv', 'ciphertext']
-            self.__jsonVal = [cipher.iv, self.__ciphertext]
+            self.__ciphertext = cipher.encrypt(pad(bytes(plaintext, 'utf-8'), AES.block_size))
+            self.__jsonKeys = ['iv', 'ciphertext','salt']
+            self.__jsonVal = [cipher.iv, self.__ciphertext,self.__salt]
 
     def decrypt(self, inputObj):
         if self.__auth:
             cipher = AES.new(self.__key, AES.MODE_CCM,
                              nonce=b64decode(inputObj['nonce']))
-            self.__plaintext = str(cipher.decrypt_and_verify(
-                b64decode(inputObj['ciphertext']), b64decode(inputObj['tag'])), 'utf-8')
+            self.__plaintext = str(cipher.decrypt_and_verify(b64decode(inputObj['ciphertext']), b64decode(inputObj['tag'])), 'utf-8')
         else:
             cipher = AES.new(self.__key, AES.MODE_CBC,
                              b64decode(inputObj['iv']))
-            self.__plaintext = str(unpad(cipher.decrypt(
-                b64decode(inputObj['ciphertext'])), AES.block_size), 'utf-8')
+            self.__plaintext = str(unpad(cipher.decrypt(b64decode(inputObj['ciphertext'])), AES.block_size), 'utf-8')
     # Popolamento oggetto JSON #
 
     def serialize(self):
@@ -54,7 +57,7 @@ class Crittografia:
 
     def deserialize(self, input):
         tmp = json.loads(input)
-        if len(tmp) < int(3):
+        if len(tmp) < int(4):
             self.__auth = False
         else:
             self.__auth = True
@@ -89,31 +92,46 @@ class Crittografia:
     @property
     def plaintext(self):
         return self.__plaintext
+   
+    @property
+    def salt(self):
+        return self.__salt
+
+    @salt.setter
+    def salt(self,value):
+        self.__salt = value
+
+    
 
 
 # Messaggi "prompt" per l'utente #
 def showPrompt(type):
-    if type == "init":
-        return int(raw_input("""
-        Seleziona l'attività:
-            1 - Cripta
-            2 - Decripta
-            3 - Chiudi
-            \n> """))
+    try:
+        if type == "init":
+            return int(input("""
+            Seleziona l'attività:
+                1 - Cripta
+                2 - Decripta
+                3 - Chiudi
+                \n> """))
 
-    elif type == "crypt":
-        return int(raw_input("""
-        Seleziona in che modo criptare:
-            1 - Con autenticazione
-            2 - Senza autenticazione
-            \n> """))
-    elif type == "path":
-        return raw_input("\tInserisci il percorso/nome del file \n\n\tPercorso corrente: \n\t[" + os.getcwd() + "]\n>")
+        elif type == "crypt":
+            return int(input("""
+            Seleziona in che modo criptare:
+                1 - Con autenticazione
+                2 - Senza autenticazione
+                \n> """))
+        elif type == "path":
+            return input("\tInserisci il percorso/nome del file \n\n\tPercorso corrente: \n\t[" + os.getcwd() + "]\n>")
+        elif type == "password":
+            return getpass("Inserisci la password: ")
+    except:
+        print("Parametro non valido")
+        showPrompt(type)
 
 #########################################
 
 # Operazioni su File #
-
 
 def saveFile(path, content):
     with open(path, "w") as f:
@@ -125,7 +143,6 @@ def readFile(path):
         return f.read()
 
 #########################################
-
 
 def clear():
     if os.name == 'nt':
@@ -141,21 +158,10 @@ while True:
     tmp = showPrompt("init")
     if tmp == 1:
         clear()
-        print("\n\t------------ CHIAVE ------------ ")
-        path = showPrompt("path")
+        print("\n\t------------ PASSWORD ------------ ")
+        psw = showPrompt("password")
         clear()
-        try:  # Controllo se file chiave esiste #
-            obj.key = b64encode(readFile(path))
-            print("File trovato. Importazione chiave...")
-        except:  # Genero nuova chiave #
-            print("File non trovato --- Genero nuova chiave")
-            # Gestione eccezione lunghezza chiave (multiplo di 16) #
-            while obj.key == None:
-                leng = int(raw_input("Inserisci la lunghezza della chiave: "))
-                obj.newKey(leng)
-            saveFile(path, b64encode(obj.key).decode('utf-8'))
-            raw_input("File generato!\nPremi INVIO per continuare")
-
+        obj.Password(psw)
         tmp2 = showPrompt("crypt")
         clear()
         # Scelta modalità (con o senza autenticazione) #
@@ -165,36 +171,36 @@ while True:
             obj.auth = False
 
         # Cifratura #
-        obj.crypt(raw_input("Testo da cifrare: "))
+        obj.crypt(input("Testo da cifrare: "))
         clear()
         # Salvataggio #
         print("\n\t------------ CIFRATO ------------ ")
         path = showPrompt("path")
         saveFile(path, obj.resJSON)
-        print("File criptato generato in: ["+os.getcwd()+"\\"+path+"]")
-        raw_input("Premi INVIO per continuare")
+        print("File criptato generato in: [" + os.getcwd() + "\\" + path + "]")
+        input("Premi INVIO per continuare")
 
     elif tmp == 2:
         clear()
-        print("\n\t------------ CHIAVE ------------ ")
-        path = showPrompt("path")
+        print("\n\t------------ PASSWORD ------------ ")
+        psw = showPrompt("password")
         clear()
         try:  # Controllo se file chiave esiste #
-            obj.key = readFile(path)
-            print("File trovato. Importazione chiave...")
             print("\n\t------------ CIFRATO ------------ ")
             try:
                 tmp = obj.deserialize(readFile(showPrompt("path")))
+                obj.Password(psw,b64decode(tmp['salt']))
                 obj.decrypt(tmp)
-                print("\nTesto decriptato: "+obj.plaintext)
-                raw_input("\nPremi INVIO per continuare")
+                print("\nTesto decriptato: " + obj.plaintext)
+                input("\nPremi INVIO per continuare")
             except Exception as e:
                 print(str(e))
-            #    raw_input("File non trovato. Premi INVIO per continuare")
+            #    input("File non trovato.  Premi INVIO per continuare")
         except Exception as e:
             print(str(e))
-          #  raw_input("Chiave non trovata. Premi INVIO per continuare")
+          #  input("Chiave non trovata.  Premi INVIO per continuare")
     elif tmp == 3:
         break
     else:
         print("Parametro non valido")
+        input("\nPremi INVIO per continuare")
