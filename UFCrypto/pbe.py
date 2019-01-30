@@ -13,56 +13,49 @@ class Crittografia:
         self.__key = None
         self.__salt = None
 
-    def newKey(self, leng:int):
-        # Gestione eccezione lunghezza chiave (multiplo di 16) #
-        if leng % 16 == 0:
-            self.__key = get_random_bytes(leng)
-        else:
-            print("Errore nella generazione della chiave. Input non valido")
-            self.__key = None
-
-    def Password(self, psw:str, saltIn:bytes=get_random_bytes(16)):
+    # Generazione chiave da password e eventuale SALT #
+    def Password(self, psw:str, saltIn:bytes = get_random_bytes(16)):
         self.__salt = saltIn
         self.__key = KDF.scrypt(psw,self.__salt,32,16384,8,1)
 
     def crypt(self, plaintext:str):
-        if self.__auth:  # Crittografia in modalità CON AUTENTICAZIONE #
+        # Crittografia in modalità CON AUTENTICAZIONE #
+        if self.__auth:  
             cipher = AES.new(self.__key, AES.MODE_CCM)
             self.__ciphertext, tag = cipher.encrypt_and_digest(bytes(plaintext, 'utf-8'))
             self.__jsonKeys = ['nonce', 'ciphertext', 'tag','salt']
             self.__jsonVal = [cipher.nonce, self.__ciphertext, tag,self.__salt]
 
-        else:  # Crittografia in modalità SENZA AUTENTICAZIONE #
+        # Crittografia in modalità SENZA AUTENTICAZIONE #
+        else:
             cipher = AES.new(self.__key, AES.MODE_CBC)
             self.__ciphertext = cipher.encrypt(pad(bytes(plaintext, 'utf-8'), AES.block_size))
             self.__jsonKeys = ['iv', 'ciphertext','salt']
             self.__jsonVal = [cipher.iv, self.__ciphertext,self.__salt]
 
     def decrypt(self, inputObj:dict):
+        # Decrittazione CON AUTENTICAZIONE #
         if self.__auth:
-            cipher = AES.new(self.__key, AES.MODE_CCM,
-                             nonce=b64decode(inputObj['nonce']))
+            cipher = AES.new(self.__key, AES.MODE_CCM, nonce=b64decode(inputObj['nonce']))
             self.__plaintext = str(cipher.decrypt_and_verify(b64decode(inputObj['ciphertext']), b64decode(inputObj['tag'])), 'utf-8')
+        # Decrittazione SENZA AUTENTICAZIONE #
         else:
-            cipher = AES.new(self.__key, AES.MODE_CBC,
-                             b64decode(inputObj['iv']))
+            cipher = AES.new(self.__key, AES.MODE_CBC, b64decode(inputObj['iv']))
             self.__plaintext = str(unpad(cipher.decrypt(b64decode(inputObj['ciphertext'])), AES.block_size), 'utf-8')
+    
     # Popolamento oggetto JSON #
-
     def serialize(self):
         json_values = [b64encode(x).decode('utf-8') for x in self.__jsonVal]
         return json.dumps(dict(zip(self.__jsonKeys, json_values)))
 
+    # Controllo se file salvato è stato fatto CON o SENZA autenticazone #
+    # Controllo effettuato tramite numero di valori salvati #
     def deserialize(self, input:str):
         tmp = json.loads(input)
-        if len(tmp) < int(4):
-            self.__auth = False
-        else:
-            self.__auth = True
+        self.__auth = len(tmp) > 3
         return tmp
 
     # Proprietà classe #
-
     @property
     def key(self):
         return self.__key
@@ -92,7 +85,6 @@ class Crittografia:
         return self.__plaintext
       
 
-
 # Messaggi "prompt" per l'utente #
 def showPrompt(type:str):
     try:
@@ -121,24 +113,20 @@ def showPrompt(type:str):
 #########################################
 
 # Operazioni su File #
-
 def saveFile(path:str, content:str):
     with open(path, "w") as f:
         f.write(content)
-
-
+        
 def readFile(path:str):
     with open(path, "r") as f:
         return f.read()
 
-#########################################
-
+# Definizione funzione "clear terminal" #
 def clear():
     if os.name == 'nt':
         return os.system('cls')
     else:
         return os.system('clear')
-
 
 # MAIN #
 while True:
@@ -159,7 +147,6 @@ while True:
             obj.auth = True
         elif tmp2 == 2:
             obj.auth = False
-
         # Cifratura #
         obj.crypt(input("Testo da cifrare: "))
         clear()
@@ -169,7 +156,6 @@ while True:
         saveFile(path, obj.resJSON)
         print("File criptato generato in: [" + os.getcwd() + "\\" + path + "]")
         input("Premi INVIO per continuare")
-
     elif tmp == 2:
         clear()
         print("\n\t------------ PASSWORD ------------ ")
