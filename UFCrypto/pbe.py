@@ -1,7 +1,5 @@
 # coding=utf-8
-import json
-import os
-import sys
+import json, os, sys
 from base64 import b64encode, b64decode
 from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
@@ -15,7 +13,7 @@ class Crittografia:
         self.__key = None
         self.__salt = None
 
-    def newKey(self, leng):
+    def newKey(self, leng:int):
         # Gestione eccezione lunghezza chiave (multiplo di 16) #
         if leng % 16 == 0:
             self.__key = get_random_bytes(leng)
@@ -23,11 +21,11 @@ class Crittografia:
             print("Errore nella generazione della chiave. Input non valido")
             self.__key = None
 
-    def Password(self, psw, saltIn:bytes=get_random_bytes(16)):
+    def Password(self, psw:str, saltIn:bytes=get_random_bytes(16)):
         self.__salt = saltIn
         self.__key = KDF.scrypt(psw,self.__salt,32,16384,8,1)
 
-    def crypt(self, plaintext):
+    def crypt(self, plaintext:str):
         if self.__auth:  # Crittografia in modalità CON AUTENTICAZIONE #
             cipher = AES.new(self.__key, AES.MODE_CCM)
             self.__ciphertext, tag = cipher.encrypt_and_digest(bytes(plaintext, 'utf-8'))
@@ -40,7 +38,7 @@ class Crittografia:
             self.__jsonKeys = ['iv', 'ciphertext','salt']
             self.__jsonVal = [cipher.iv, self.__ciphertext,self.__salt]
 
-    def decrypt(self, inputObj):
+    def decrypt(self, inputObj:dict):
         if self.__auth:
             cipher = AES.new(self.__key, AES.MODE_CCM,
                              nonce=b64decode(inputObj['nonce']))
@@ -55,7 +53,7 @@ class Crittografia:
         json_values = [b64encode(x).decode('utf-8') for x in self.__jsonVal]
         return json.dumps(dict(zip(self.__jsonKeys, json_values)))
 
-    def deserialize(self, input):
+    def deserialize(self, input:str):
         tmp = json.loads(input)
         if len(tmp) < int(4):
             self.__auth = False
@@ -70,7 +68,7 @@ class Crittografia:
         return self.__key
 
     @key.setter
-    def key(self, value):
+    def key(self, value:str):
         self.__key = bytes(value, 'utf-8')
 
     @property
@@ -82,7 +80,7 @@ class Crittografia:
         return self.__auth
 
     @auth.setter
-    def auth(self, value):
+    def auth(self, value:bool):
         self.__auth = value
 
     @property
@@ -92,20 +90,11 @@ class Crittografia:
     @property
     def plaintext(self):
         return self.__plaintext
-   
-    @property
-    def salt(self):
-        return self.__salt
-
-    @salt.setter
-    def salt(self,value):
-        self.__salt = value
-
-    
+      
 
 
 # Messaggi "prompt" per l'utente #
-def showPrompt(type):
+def showPrompt(type:str):
     try:
         if type == "init":
             return int(input("""
@@ -133,12 +122,12 @@ def showPrompt(type):
 
 # Operazioni su File #
 
-def saveFile(path, content):
+def saveFile(path:str, content:str):
     with open(path, "w") as f:
         f.write(content)
 
 
-def readFile(path):
+def readFile(path:str):
     with open(path, "r") as f:
         return f.read()
 
@@ -161,6 +150,7 @@ while True:
         print("\n\t------------ PASSWORD ------------ ")
         psw = showPrompt("password")
         clear()
+        # Generazione chiave con SALT casuale #
         obj.Password(psw)
         tmp2 = showPrompt("crypt")
         clear()
@@ -185,20 +175,21 @@ while True:
         print("\n\t------------ PASSWORD ------------ ")
         psw = showPrompt("password")
         clear()
-        try:  # Controllo se file chiave esiste #
-            print("\n\t------------ CIFRATO ------------ ")
-            try:
-                tmp = obj.deserialize(readFile(showPrompt("path")))
-                obj.Password(psw,b64decode(tmp['salt']))
-                obj.decrypt(tmp)
-                print("\nTesto decriptato: " + obj.plaintext)
-                input("\nPremi INVIO per continuare")
-            except Exception as e:
-                print(str(e))
-            #    input("File non trovato.  Premi INVIO per continuare")
+        print("\n\t------------ CIFRATO ------------ ")
+        try:
+            tmp = obj.deserialize(readFile(showPrompt("path")))
+            # Rigenerazione chiave partendo da SALT salvato #
+            obj.Password(psw,b64decode(tmp['salt']))
+            # Decrittazione #
+            obj.decrypt(tmp)
+            print("\nTesto decriptato: " + obj.plaintext)
+            input("\nPremi INVIO per continuare")
         except Exception as e:
-            print(str(e))
-          #  input("Chiave non trovata.  Premi INVIO per continuare")
+            if str(e) == "MAC check failed":
+                print("Password errata")
+            else:
+                print(str(e))
+            input("\nPremi INVIO per continuare")
     elif tmp == 3:
         break
     else:
