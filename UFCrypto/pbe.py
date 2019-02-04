@@ -116,6 +116,7 @@ def showPrompt(type:str):
 def saveFile(path:str, content:str):
     with open(path, "w") as f:
         f.write(content)
+        return os.path.realpath(f.name)
         
 def readFile(path:str):
     with open(path, "r") as f:
@@ -152,9 +153,8 @@ while True:
         clear()
         # Salvataggio #
         print("\n\t------------ CIFRATO ------------ ")
-        path = showPrompt("path")
-        saveFile(path, obj.resJSON)
-        print("File criptato generato in: [" + os.getcwd() + "\\" + path + "]")
+        path = showPrompt("path")       
+        print("File criptato generato in: [" + saveFile(path, obj.resJSON) + "]")
         input("Premi INVIO per continuare")
     elif tmp == 2:
         clear()
