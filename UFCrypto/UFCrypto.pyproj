@@ -12,7 +12,7 @@
     <Name>UFCrypto</Name>
     <RootNamespace>UFCrypto</RootNamespace>
     <IsWindowsApplication>False</IsWindowsApplication>
-    <InterpreterId>Global|VisualStudio|Python36_Main</InterpreterId>
+    <InterpreterId>Global|PythonCore|3.6</InterpreterId>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
@@ -23,9 +23,16 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="asim.py">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="pbe.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="sym.py" />
   </ItemGroup>
   <ItemGroup>
+    <InterpreterReference Include="Global|PythonCore|3.6" />
     <InterpreterReference Include="Global|VisualStudio|Python36_Main" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
