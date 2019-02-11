@@ -19,10 +19,10 @@ class Crittografia(object):
         self.__passw = KDF.scrypt(psw,self.__salt,32,16384,8,1)
 
     def GenerateKey(self):
-        try:
+        try:            
             key = RSA.generate(2048)
             self.__privkey = key.export_key("DER")
-            self.__pubkey = key.publickey().export_key("DER")
+            self.__pubkey = key.publickey()
             self.EncryptPrivKey()
         except Exception as e:
             print(str(e))
@@ -38,17 +38,22 @@ class Crittografia(object):
         cipher = AES.new(self.__passw, AES.MODE_CCM, nonce=b64decode(inputObj['nonce']))
         self.__privkey = cipher.decrypt_and_verify(b64decode(inputObj['ciphertext']), b64decode(inputObj['tag']))
 
+    def ImportPubKey(self,key:bytes):
+        self.__pubkey = RSA.import_key(key)
+
     def Crypt(self,content:bytes):
         cipher = PKCS1_OAEP.new(self.__pubkey)
         self.__crypted = cipher.encrypt(content)
 
     def Decrypt(self,content:bytes):
-        cipher = PKCS1_OAEP.new(self.__privkey)
+        tmp = RSA.import_key(self.__privkey)
+        cipher = PKCS1_OAEP.new(tmp)
         return cipher.decrypt(content)
 
     def serialize(self):
         json_values = [b64encode(x).decode('utf-8') for x in self.__jsonVal]
         return bytes(json.dumps(dict(zip(self.__jsonKeys, json_values))),'utf-8')
+
     def deserialize(self, input:str):
         return json.loads(input)
 
@@ -117,49 +122,67 @@ while True:
     tmp = showPrompt("init")
     if tmp == 1:
         try:
-            clear()
-            print("\n\t------------ PASSWORD ------------ ")
-            psw = showPrompt("password")
-            clear()
-            # Generazione chiavi crittografando la privata con una password #
-            obj.Password(psw)
-            print("Generazione chiavi in corso...")
-            obj.GenerateKey()
-            clear()
-            print("\n CHIAVE GENERATA")
-            path = showPrompt("path")
-            # Salvataggio chiavi pubbliche e private #
-            print("\nChiave pubblica salvata in: ["+saveFile(path+".pub",obj.PubKey)+"]")
-            print("\nChiave privata salvata in: ["+saveFile(path+".priv",obj.resJSON)+"]")
-            input("\nPremi INVIO per continuare")
-            clear()
+            # Scelta utilizzo chiavi #
+            importPub = input("Importare una chiave pubblica? S/N ")
+            if importPub.upper() == "S": 
+                path = showPrompt("path")
+                obj.ImportPubKey(readFile(path))
+                print("CHIAVE IMPORTATA")
+            elif importPub.upper() == "N": 
+                clear()
+                print("GENERAZIONE COPPIA DI CHIAVI\n")
+                print("\n\t------------ PASSWORD ------------ ")
+                psw = showPrompt("password")
+                clear()
+                # Generazione chiavi crittografando la privata con una password #
+                obj.Password(psw)
+                print("Generazione chiavi in corso...")
+                obj.GenerateKey()
+                clear()
+                print("\n CHIAVE GENERATA")
+                path = showPrompt("path")
+                # Salvataggio chiavi pubbliche e private #
+                print("\nChiave pubblica salvata in: ["+saveFile(path+".pub",obj.PubKey.export_key("DER"))+"]")
+                print("\nChiave privata salvata in: ["+saveFile(path+".priv",obj.resJSON)+"]")
+                input("\nPremi INVIO per continuare")
+                clear()
+            else:
+                print("Parametro non valido")
+                continue
             # File "bersaglio" #
             print("FILE DA CRIPTARE")
             path = showPrompt("path")
             print("Crittazione in corso...")
             obj.Crypt(readFile(path))
             print("File criptato.")
-            path = showPrompt("path")
-            print("\nFile salvato in: ["+saveFile(path+".crypt")+"]")
+            print("\nFile salvato in: ["+saveFile(path+".crypt",obj.Crypted)+"]")
             input("\nPremi INVIO per continuare")
         except Exception as e:
             print(str(e))
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
-        clear()
-        print("INDICA IL NOME (senza estensione) DEL FILE CHIAVE")
-        print("ATTENZIONE! \nI file devono avere lo stesso nome, e terminare rispettivamente con '.priv' '.pub'")
-        path = showPrompt("path")
         try:
-            obj.PubKey = readFile(path+".pub")
+            clear()
+            print("\nCHIAVE PRIVATA")
+            path = showPrompt("path")
             psw = getpass("Inserisci la password per la chiave privata: ")
-            tmp = obj.deserialize(readFile(path+".priv"))
-          #  print(tmp)
-            obj.Password(psw,tmp['salt'])
+            tmp = obj.deserialize(readFile(path))
+            obj.Password(psw,b64decode(tmp['salt']))
             obj.DecryptPrivKey(tmp)
-            print(obj.PrivKey)
+            print("CHIAVE PRIVATA IMPORTATA")
+            print("\n FILE CRIPTATO")
+            path=showPrompt("path")
+            tmp = obj.Decrypt(readFile(path))
+            clear()
+            print("FILE DECRITTATO")
+            path = showPrompt("path")
+            print("\nFile decrittato salvato in: ["+saveFile(path,tmp)+"]")
+            input("\nPremi INVIO per continuare")
         except Exception as e:
-            print(str(e))
+            if str(e) == "MAC check failed":
+                print("Errore di crittografia. Parametri non validi")
+            else:
+                print(str(e))
             input("\nPremi INVIO per continuare")
     elif tmp == 3:
         break
