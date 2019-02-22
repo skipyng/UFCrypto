@@ -27,6 +27,9 @@ class Crittografia(object):
     def ImportPubKey(self,key:bytes):
         self.__pubkey = RSA.import_key(key)
 
+    def ImportPrivKey(self,key:bytes,password):
+        self.__privkey = RSA.import_key(key,password)
+
     def Crypt(self,content:bytes):
         cipher = PKCS1_OAEP.new(self.__pubkey)
         sessionKey = get_random_bytes(16)
@@ -38,11 +41,12 @@ class Crittografia(object):
         self.__jsonKeys = ['nonce', 'ciphertext', 'tag', 'enckey']
         self.__jsonVal = [ciphAes.nonce, self.__crypted, tag, encSessionKey]
 
-    def Decrypt(self,dictIn:dict, password:str):
-        #### TODO ####
-        tmp = RSA.import_key(self.__privkey, password)
-        cipher = PKCS1_OAEP.new(tmp)
-        return cipher.decrypt(content)
+    def Decrypt(self,dictIn:dict):
+        cipher = PKCS1_OAEP.new(self.__privkey)
+        sessionkey = cipher.decrypt(b64decode(dictIn['enckey']))
+
+        ciphAes = AES.new(sessionkey,AES.MODE_EAX, nonce = b64decode(dictIn['nonce']))
+        return ciphAes.decrypt_and_verify(b64decode(dictIn['cyphertext']), b64decode(dictIn['tag']))
 
     def serialize(self):
         json_values = [b64encode(x).decode('utf-8') for x in self.__jsonVal]
@@ -67,9 +71,6 @@ class Crittografia(object):
     def PrivKey(self):
         return self.__privkey
     
-    @property
-    def Crypted(self):
-        return self.__crypted
 
 
 # Definizione funzione "clear terminal" #
@@ -147,7 +148,7 @@ while True:
             print("Crittazione in corso...")
             obj.Crypt(readFile(path))
             print("File criptato.")
-            print("\nFile salvato in: ["+saveFile(path+".crypt",obj.Crypted)+"]")
+            print("\nFile salvato in: ["+saveFile(path+".crypt",obj.resJSON)+"]")
             input("\nPremi INVIO per continuare")
         except Exception as e:
             print(str(e))
@@ -158,10 +159,10 @@ while True:
             print("\nCHIAVE PRIVATA")
             path = showPrompt("path")
             psw = getpass("Inserisci la password per la chiave privata: ")
-            #### TODO ####
+            obj.ImportPrivKey(readFile(path),psw)
             print("\n FILE CRIPTATO")
-            path=showPrompt("path")
-            tmp = obj.Decrypt(json-loads(readFile(path)),psw)
+            path = showPrompt("path")
+            tmp = obj.Decrypt(json.loads(readFile(path)))
             clear()
             print("FILE DECRITTATO")
             path = showPrompt("path")
