@@ -14,39 +14,33 @@ class Crittografia(object):
         self.__salt = None
         self.__crypted = None
     
-    def Password(self, psw:str, saltIn:bytes = get_random_bytes(16)):
-        self.__salt = saltIn
-        self.__passw = KDF.scrypt(psw,self.__salt,32,16384,8,1)
-
-    def GenerateKey(self):
+    def GenerateKey(self, password:str):
         try:            
             key = RSA.generate(2048)
-            self.__privkey = key.export_key("DER")
+            self.__privkey = key.export_key(passphrase = password,)
             self.__pubkey = key.publickey()
-            self.EncryptPrivKey()
+           
         except Exception as e:
             print(str(e))
             input()
          
-    def EncryptPrivKey(self):
-        cipher = AES.new(self.__passw, AES.MODE_CCM)
-        encKey, tag = cipher.encrypt_and_digest(self.__privkey)
-        self.__jsonKeys = ['nonce', 'ciphertext', 'tag','salt']
-        self.__jsonVal = [cipher.nonce, encKey, tag, self.__salt]
-
-    def DecryptPrivKey(self,inputObj:dict):
-        cipher = AES.new(self.__passw, AES.MODE_CCM, nonce=b64decode(inputObj['nonce']))
-        self.__privkey = cipher.decrypt_and_verify(b64decode(inputObj['ciphertext']), b64decode(inputObj['tag']))
-
     def ImportPubKey(self,key:bytes):
         self.__pubkey = RSA.import_key(key)
 
     def Crypt(self,content:bytes):
         cipher = PKCS1_OAEP.new(self.__pubkey)
-        self.__crypted = cipher.encrypt(content)
+        sessionKey = get_random_bytes(16)
+        encSessionKey = cipher.encrypt(sessionKey)
 
-    def Decrypt(self,content:bytes):
-        tmp = RSA.import_key(self.__privkey)
+        ciphAes = AES.new(sessionKey,AES.MODE_EAX)
+        self.__crypted, tag = ciphAes.encrypt_and_digest(content)
+
+        self.__jsonKeys = ['nonce', 'ciphertext', 'tag', 'enckey']
+        self.__jsonVal = [ciphAes.nonce, self.__crypted, tag, encSessionKey]
+
+    def Decrypt(self,dictIn:dict, password:str):
+        #### TODO ####
+        tmp = RSA.import_key(self.__privkey, password)
         cipher = PKCS1_OAEP.new(tmp)
         return cipher.decrypt(content)
 
@@ -134,16 +128,14 @@ while True:
                 print("\n\t------------ PASSWORD ------------ ")
                 psw = showPrompt("password")
                 clear()
-                # Generazione chiavi crittografando la privata con una password #
-                obj.Password(psw)
                 print("Generazione chiavi in corso...")
-                obj.GenerateKey()
+                obj.GenerateKey(psw)
                 clear()
                 print("\n CHIAVE GENERATA")
                 path = showPrompt("path")
                 # Salvataggio chiavi pubbliche e private #
-                print("\nChiave pubblica salvata in: ["+saveFile(path+".pub",obj.PubKey.export_key("DER"))+"]")
-                print("\nChiave privata salvata in: ["+saveFile(path+".priv",obj.resJSON)+"]")
+                print("\nChiave pubblica salvata in: ["+saveFile(path+".pub",obj.PubKey.export_key())+"]")
+                print("\nChiave privata salvata in: ["+saveFile(path+".priv",obj.PrivKey)+"]")
                 input("\nPremi INVIO per continuare")
                 clear()
             else:
@@ -166,13 +158,10 @@ while True:
             print("\nCHIAVE PRIVATA")
             path = showPrompt("path")
             psw = getpass("Inserisci la password per la chiave privata: ")
-            tmp = obj.deserialize(readFile(path))
-            obj.Password(psw,b64decode(tmp['salt']))
-            obj.DecryptPrivKey(tmp)
-            print("CHIAVE PRIVATA IMPORTATA")
+            #### TODO ####
             print("\n FILE CRIPTATO")
             path=showPrompt("path")
-            tmp = obj.Decrypt(readFile(path))
+            tmp = obj.Decrypt(json-loads(readFile(path)),psw)
             clear()
             print("FILE DECRITTATO")
             path = showPrompt("path")
