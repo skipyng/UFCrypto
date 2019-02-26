@@ -1,5 +1,6 @@
 # coding=utf-8
 import json, os, sys
+import traceback
 from base64 import b64encode, b64decode
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES, PKCS1_OAEP
@@ -17,7 +18,7 @@ class Crittografia(object):
     def GenerateKey(self, password:str):
         try:            
             key = RSA.generate(2048)
-            self.__privkey = key.export_key(passphrase = password,)
+            self.__privkey = key.export_key(passphrase = password)
             self.__pubkey = key.publickey()
            
         except Exception as e:
@@ -75,7 +76,7 @@ def clear():
         return os.system('clear')
 
 # Operazioni su File #
-def saveFile(path:str, content:str):
+def saveFile(path:str, content:bytes):
     with open(path, "wb") as f:
         f.write(content)
         return os.path.realpath(f.name)
@@ -163,10 +164,11 @@ while True:
             print("\nFile decrittato salvato in: ["+saveFile(path,tmp)+"]")
             input("\nPremi INVIO per continuare")
         except Exception as e:
+            tb = traceback.format_exc()
             if str(e) == "MAC check failed":
                 print("Errore di crittografia. Parametri non validi")
             else:
-                print(type(e),str(e))
+                print(tb) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 3:
         break
