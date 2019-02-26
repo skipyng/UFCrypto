@@ -47,7 +47,7 @@ class Crittografia(object):
         sessionkey = cipher.decrypt(b64decode(dictIn['enckey']))
 
         ciphAes = AES.new(sessionkey,AES.MODE_EAX, nonce = b64decode(dictIn['nonce']))
-        return ciphAes.decrypt_and_verify(b64decode(dictIn['cyphertext']), b64decode(dictIn['tag']))
+        return ciphAes.decrypt_and_verify(b64decode(dictIn['ciphertext']), b64decode(dictIn['tag']))
 
     def serialize(self):
         json_values = [b64encode(x).decode('utf-8') for x in self.__jsonVal]
