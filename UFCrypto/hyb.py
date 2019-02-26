@@ -27,7 +27,7 @@ class Crittografia(object):
     def ImportPubKey(self,key:bytes):
         self.__pubkey = RSA.import_key(key)
 
-    def ImportPrivKey(self,key:bytes,password):
+    def ImportPrivKey(self,key:bytes, password:str):
         self.__privkey = RSA.import_key(key,password)
 
     def Crypt(self,content:bytes):
@@ -63,15 +63,9 @@ class Crittografia(object):
     def PubKey(self):
         return self.__pubkey
 
-    @PubKey.setter
-    def PubKey(self,value:bytes):
-        self.__pubkey = value
-    
     @property
     def PrivKey(self):
         return self.__privkey
-    
-
 
 # Definizione funzione "clear terminal" #
 def clear():
@@ -172,7 +166,7 @@ while True:
             if str(e) == "MAC check failed":
                 print("Errore di crittografia. Parametri non validi")
             else:
-                print(str(e))
+                print(type(e),str(e))
             input("\nPremi INVIO per continuare")
     elif tmp == 3:
         break
