@@ -8,7 +8,8 @@ from Crypto.Protocol import KDF
 from Crypto.Random import get_random_bytes
 from getpass import getpass
 
-class Crittografia(object):
+  
+class Crittografia():
     def __init__(self):
         self.__pubkey = None
         self.__passw = None
@@ -68,6 +69,33 @@ class Crittografia(object):
     def PrivKey(self):
         return self.__privkey
 
+
+class Certificato():
+    def __init__(self):
+        self.__pubkey = None
+        self.__cert = None
+        self.__resJSON = None
+    
+    def GeneraCert(self, crit:Crittografia, id:str, password:str):
+        crit.GenerateKey(password)
+        self.__pubkey = crit.PubKey
+        keys = ['id','pubk','sig']
+        self.__resJSON = self.Serialize(keys,[bytes(id,'utf-8'),self.__pubkey.export_key(),bytes('','utf-8')])
+
+    def VerificaFirma(self):
+        pass
+
+    def Firma(self):
+        pass
+    
+    def Serialize(self, keys:list, values:list):
+        tmp = [b64encode(x).decode('utf-8') for x in values]
+        return bytes(json.dumps(dict(zip(keys, tmp))),'utf-8')    
+
+    @property
+    def resJSON(self):
+        return self.__resJSON
+
 # Definizione funzione "clear terminal" #
 def clear():
     if os.name == 'nt':
@@ -108,16 +136,22 @@ def showPrompt(type:str):
 
 while True:
     obj = Crittografia()
+    cert = Certificato()
     clear()
     tmp = showPrompt("init")
     if tmp == 1:
         try:
             # Scelta utilizzo chiavi #
-            importPub = input("Importare una chiave pubblica? S/N ")
+            importPub = input("Generare un certificato? S/N ")
             if importPub.upper() == "S": 
+                psw = showPrompt("password")
+                cert.GeneraCert(obj,'micheleschelfi',psw)                
+                print("CERTIFICATO GENERATO")
+                clear()
+                print("JSON CERTIFICATO")
                 path = showPrompt("path")
-                obj.ImportPubKey(readFile(path))
-                print("CHIAVE IMPORTATA")
+                print("\nFile salvato in: ["+saveFile(path+".cert",cert.resJSON)+"]")
+
             elif importPub.upper() == "N": 
                 clear()
                 print("GENERAZIONE COPPIA DI CHIAVI\n")
@@ -146,7 +180,8 @@ while True:
             print("\nFile salvato in: ["+saveFile(path+".crypt",obj.resJSON)+"]")
             input("\nPremi INVIO per continuare")
         except Exception as e:
-            print(str(e))
+            tb = traceback.format_exc()
+            print(tb) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
         try:
