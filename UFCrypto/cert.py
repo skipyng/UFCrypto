@@ -110,8 +110,7 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
         signed = signer.sign(h)
 
         self.__sign = b64encode(signed).decode('utf-8')
-
-        
+                
     
     def Serialize(self, id:str):
         pubk_str = self.__pubkey.export_key(format='PEM')
@@ -194,10 +193,23 @@ while True:
                 clear()
                 print("CERTIFICATO ESISTENTE")
                 path = showPrompt("path")
-                certFile = cert.Deserialize(readFile(path))
-                if cert.VerificaFirma(certFile,cert.CA_Pubkey,certFile['sig']):
+                file = readFile(path)
+                certFile = cert.Deserialize(file)
+                
+                if cert.VerificaFirma(file,cert.CA_Pubkey,certFile['sig']):
                     print("CERTIFICATO VALIDO")
+                    print("\nCHIAVE PRIVATA")
+                    try:
+                        path = showPrompt("path")
+                        psw = getpass("Inserisci la password per la chiave privata: ")
+                        print("\nIMPORTAZIONE CHIAVE PRIVATA...")
+                        cert.ImportKey(readFile(path),'priv',psw)
+                        print("CHIAVE IMPORTATA")
+                    except:
+                        print("Errore durante l'importazione della chiave.")
                     #input()
+                    input("\nPremi INVIO per continuare")
+
                 else:
                     print("CERTIFICATO NON VALIDO")
                     input()
