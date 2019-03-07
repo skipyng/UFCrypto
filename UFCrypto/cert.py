@@ -184,9 +184,29 @@ def showPrompt(type:str):
 
 ##############################################
 
+cert = Certificato()
+
+def ImportKeyCert():
+    clear()
+    print("CERTIFICATO ESISTENTE")
+    path = showPrompt("path")
+    rawfile = readFile(path)
+    print("CHIAVE PRIVATA")
+    path = showPrompt("path")
+    psw = getpass("Inserisci la password per la chiave privata: ")
+    privkey_raw = readFile(path)
+    
+    try:
+        cert.ImportCert(rawfile,privkey_raw,psw)
+        input("\nPremi INVIO per continuare")
+
+    except Exception as e:
+        print("ERRORE DI IMPORTAZIONE")
+        print(str(e))
+        input()
+    clear()
+
 while True:
-    cert = Certificato()
-    obj = Crittografia()
     clear()
     tmp = showPrompt("init")
     if tmp == 1:
@@ -203,24 +223,7 @@ while True:
                 print("\nFile salvato in: ["+saveFile(path+".cert",cert.resJSON)+"]")
                 print("\nChiave privata salvata in: ["+saveFile("key.priv",cert.Privkey.encode('utf-8'))+"]")
             elif newCert.upper() == "N": 
-                clear()
-                print("CERTIFICATO ESISTENTE")
-                path = showPrompt("path")
-                rawfile = readFile(path)
-                print("CHIAVE PRIVATA")
-                path = showPrompt("path")
-                psw = getpass("Inserisci la password per la chiave privata: ")
-                privkey_raw = readFile(path)
-                
-                try:
-                    cert.ImportCert(rawfile,privkey_raw,psw)
-                    input("\nPremi INVIO per continuare")
-
-                except Exception as e:
-                    print("ERRORE DI IMPORTAZIONE")
-                    print(str(e))
-                    input()
-                clear()
+                ImportKeyCert()
             else:
                 print("Parametro non valido")
                 continue
@@ -231,20 +234,8 @@ while True:
             print(tb) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
-        try:
-            clear()
-            print("\nCHIAVE PRIVATA")
-            path = showPrompt("path")
-            psw = getpass("Inserisci la password per la chiave privata: ")
-            cert.ImportKey(readFile(path),'priv',psw)
-            
-        except Exception as e:
-            tb = traceback.format_exc()
-            if str(e) == "MAC check failed":
-                print("Errore di crittografia. Parametri non validi")
-            else:
-                print(tb) # SOLO PER DEBUG
-            input("\nPremi INVIO per continuare")
+        ImportKeyCert()
+        print("TODO")
     elif tmp == 3:
         break
     else:
