@@ -10,7 +10,7 @@ from Crypto.Hash import SHA256
 from Crypto.Signature import DSS
 from getpass import getpass
 
-class Crittografia(object):
+class Crittografia():
     def __init__(self):
         self.__pubkey = None
         self.__passw = None
@@ -72,10 +72,10 @@ class Crittografia(object):
 
 class Certificato():
     def __init__(self):
-        self.__pubCA = """-----BEGIN PUBLIC KEY-----
+        self.__pubCA = ECC.import_key("""-----BEGIN PUBLIC KEY-----
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdqBTMZ+Mmv9mYlvXE410J8rpWfm/
 vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
------END PUBLIC KEY-----"""
+-----END PUBLIC KEY-----""")
     
     def GeneraCert(self, id:str, password:str):
         self.__key = ECC.generate(curve='P-256')
@@ -98,7 +98,7 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
         try:
             h = SHA256.new(content)
             verifier = DSS.new(pubkey,'deterministic-rfc6979')
-            verifier.verify(h, sign)
+            verifier.verify(h, b64decode(sign))
             return True
         except:
             return False
@@ -114,7 +114,7 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
     
     def Serialize(self, id:str):
         pubk_str = self.__pubkey.export_key(format='PEM')
-        print(pubk_str)
+        #print(pubk_str)
         tmp = {'id': id, 'pubk':pubk_str,'sig':''}
         self.__resJSON = json.dumps(tmp).encode('utf-8')
 
@@ -193,10 +193,10 @@ while True:
                 clear()
                 print("CERTIFICATO ESISTENTE")
                 path = showPrompt("path")
-                file = readFile(path)
-                certFile = cert.Deserialize(file)
+                rawfile = readFile(path)
+                certFile = cert.Deserialize(rawfile)
                 
-                if cert.VerificaFirma(file,cert.CA_Pubkey,certFile['sig']):
+                if cert.VerificaFirma(rawfile,cert.CA_Pubkey,certFile['sig']):
                     print("CERTIFICATO VALIDO")
                     print("\nCHIAVE PRIVATA")
                     try:
