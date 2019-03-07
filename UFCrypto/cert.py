@@ -230,13 +230,18 @@ while True:
                 continue
             # File "bersaglio" #
            
-        except Exception as e:
-            tb = traceback.format_exc()
-            print(tb) # SOLO PER DEBUG
+        except:
+            print(traceback.format_exc()) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
-        ImportKeyCert(cert)
-        print("TODO")
+        try: 
+            ImportKeyCert(cert)
+            print("TODO")
+        except IOError:
+            print("FILE NON VALIDO")
+        except :
+            print(traceback.format_exc())
+        input("\nPremi INVIO per continuare")
     elif tmp == 3:
         break
     else:
