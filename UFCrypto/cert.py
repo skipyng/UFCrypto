@@ -100,9 +100,22 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
             verifier = DSS.new(pubkey,'deterministic-rfc6979')
             verifier.verify(h, b64decode(sign))
             return True
-        except:
+        except ValueError:
+            print("FIRMA NON VALIDA")
             return False
         
+    def ImportCert(self,certraw, privkey_raw, psw:str):
+        cert = self.Deserialize(certraw)
+        if self.VerificaFirma(certraw,self.__pubCA,cert['sig']):
+            print("OK")
+            try:
+                self.ImportKey(privkey_raw,'priv',psw)
+                self.ImportKey(cert['pubk'],'pub')
+            except:
+                print("ERRORE IMPORTAZIONE CHIAVI")
+        else:
+            print("SI E' ROTTO")
+
 
     def Firma(self, content:bytes):
         h = SHA256.new(content)
@@ -194,24 +207,18 @@ while True:
                 print("CERTIFICATO ESISTENTE")
                 path = showPrompt("path")
                 rawfile = readFile(path)
-                certFile = cert.Deserialize(rawfile)
+                print("CHIAVE PRIVATA")
+                path = showPrompt("path")
+                psw = getpass("Inserisci la password per la chiave privata: ")
+                privkey_raw = readFile(path)
                 
-                if cert.VerificaFirma(rawfile,cert.CA_Pubkey,certFile['sig']):
-                    print("CERTIFICATO VALIDO")
-                    print("\nCHIAVE PRIVATA")
-                    try:
-                        path = showPrompt("path")
-                        psw = getpass("Inserisci la password per la chiave privata: ")
-                        print("\nIMPORTAZIONE CHIAVE PRIVATA...")
-                        cert.ImportKey(readFile(path),'priv',psw)
-                        print("CHIAVE IMPORTATA")
-                    except:
-                        print("Errore durante l'importazione della chiave.")
-                    #input()
+                try:
+                    cert.ImportCert(rawfile,privkey_raw,psw)
                     input("\nPremi INVIO per continuare")
 
-                else:
-                    print("CERTIFICATO NON VALIDO")
+                except Exception as e:
+                    print("ERRORE DI IMPORTAZIONE")
+                    print(str(e))
                     input()
                 clear()
             else:
