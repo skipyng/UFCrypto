@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>3768fda3-9c00-472f-ac00-26837a812532</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>hyb.py</StartupFile>
+    <StartupFile>cert.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -23,6 +23,7 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="cert.py" />
     <Compile Include="hyb.py">
       <SubType>Code</SubType>
     </Compile>

@@ -2,10 +2,12 @@
 import json, os, sys
 import traceback
 from base64 import b64encode, b64decode
-from Crypto.PublicKey import RSA
+from Crypto.PublicKey import RSA, ECC
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Protocol import KDF
 from Crypto.Random import get_random_bytes
+from Crypto.Hash import SHA256
+from Crypto.Signature import DSS
 from getpass import getpass
 
 class Crittografia(object):
@@ -47,7 +49,7 @@ class Crittografia(object):
         sessionkey = cipher.decrypt(b64decode(dictIn['enckey']))
 
         ciphAes = AES.new(sessionkey,AES.MODE_EAX, nonce = b64decode(dictIn['nonce']))
-        return ciphAes.decrypt_and_verify(b64decode(dictIn['ciphertext']), b64decode(dictIn['tag']))
+        return ciphAes.decrypt_and_verify(b64decode(dictIn['cyphertext']), b64decode(dictIn['tag']))
 
     def serialize(self):
         json_values = [b64encode(x).decode('utf-8') for x in self.__jsonVal]
@@ -67,6 +69,69 @@ class Crittografia(object):
     @property
     def PrivKey(self):
         return self.__privkey
+
+class Certificato():
+    def __init__(self):
+        self.__pubCA = """-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdqBTMZ+Mmv9mYlvXE410J8rpWfm/
+vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
+-----END PUBLIC KEY-----"""
+    
+    def GeneraCert(self, id:str, password:str):
+        self.__key = ECC.generate(curve='P-256')
+        prk_settings = {
+            'format': 'PEM',
+            'passphrase': password,
+            'protection': 'scryptAndAES256-CBC'
+            }
+        self.__privkey = self.__key.export_key(**prk_settings)
+        self.__pubkey = self.__key.public_key()
+        self.Serialize(id)     
+    
+    def ImportKey(self, keyIn:str, type:str, psw=None):
+        if type == "pub":
+            self.__pubkey = ECC.import_key(keyIn)
+        elif type == "priv":
+            self.__privkey = ECC.import_key(keyIn,psw)
+
+    def VerificaFirma(self, content:bytes, pubkey, sign):
+        try:
+            h = SHA256.new(content)
+            verifier = DSS.new(pubkey,'deterministic-rfc6979')
+            verifier.verify(h, sign)
+            return True
+        except:
+            return False
+        
+
+    def Firma(self, content:bytes):
+        h = SHA256.new(content)
+        signer = DSS.new(self.__privkey,'deterministic-rfc6979')
+        signed = signer.sign(h)
+
+        self.__sign = b64encode(signed).decode('utf-8')
+                
+    
+    def Serialize(self, id:str):
+        pubk_str = self.__pubkey.export_key(format='PEM')
+        print(pubk_str)
+        tmp = {'id': id, 'pubk':pubk_str,'sig':''}
+        self.__resJSON = json.dumps(tmp).encode('utf-8')
+
+    def Deserialize(self,content:str):
+        return json.loads(content)
+
+    @property
+    def resJSON(self):
+        return self.__resJSON
+
+    @property
+    def Privkey(self):
+        return self.__privkey
+    
+    @property
+    def CA_Pubkey(self):
+        return self.__pubCA
 
 # Definizione funzione "clear terminal" #
 def clear():
@@ -107,46 +172,56 @@ def showPrompt(type:str):
 ##############################################
 
 while True:
+    cert = Certificato()
     obj = Crittografia()
     clear()
     tmp = showPrompt("init")
     if tmp == 1:
         try:
-            # Scelta utilizzo chiavi #
-            importPub = input("Importare una chiave pubblica? S/N ")
-            if importPub.upper() == "S": 
-                path = showPrompt("path")
-                obj.ImportPubKey(readFile(path))
-                print("CHIAVE IMPORTATA")
-            elif importPub.upper() == "N": 
-                clear()
-                print("GENERAZIONE COPPIA DI CHIAVI\n")
-                print("\n\t------------ PASSWORD ------------ ")
+            # Scelta utilizzo certificato #
+            newCert = input("Generare un certificato? S/N ")
+            if newCert.upper() == "S": 
                 psw = showPrompt("password")
+                cert.GeneraCert('micheleschelfi',psw)                
+                print("GENERAZIONE CERTIFICATO...")
                 clear()
-                print("Generazione chiavi in corso...")
-                obj.GenerateKey(psw)
-                clear()
-                print("\n CHIAVE GENERATA")
+                print("CERTIFICATO GENERATO")
                 path = showPrompt("path")
-                # Salvataggio chiavi pubbliche e private #
-                print("\nChiave pubblica salvata in: ["+saveFile(path+".pub",obj.PubKey.export_key())+"]")
-                print("\nChiave privata salvata in: ["+saveFile(path+".priv",obj.PrivKey)+"]")
-                input("\nPremi INVIO per continuare")
+                print("\nFile salvato in: ["+saveFile(path+".cert",cert.resJSON)+"]")
+                print("\nChiave privata salvata in: ["+saveFile("key.priv",cert.Privkey.encode('utf-8'))+"]")
+            elif newCert.upper() == "N": 
+                clear()
+                print("CERTIFICATO ESISTENTE")
+                path = showPrompt("path")
+                file = readFile(path)
+                certFile = cert.Deserialize(file)
+                
+                if cert.VerificaFirma(file,cert.CA_Pubkey,certFile['sig']):
+                    print("CERTIFICATO VALIDO")
+                    print("\nCHIAVE PRIVATA")
+                    try:
+                        path = showPrompt("path")
+                        psw = getpass("Inserisci la password per la chiave privata: ")
+                        print("\nIMPORTAZIONE CHIAVE PRIVATA...")
+                        cert.ImportKey(readFile(path),'priv',psw)
+                        print("CHIAVE IMPORTATA")
+                    except:
+                        print("Errore durante l'importazione della chiave.")
+                    #input()
+                    input("\nPremi INVIO per continuare")
+
+                else:
+                    print("CERTIFICATO NON VALIDO")
+                    input()
                 clear()
             else:
                 print("Parametro non valido")
                 continue
             # File "bersaglio" #
-            print("FILE DA CRIPTARE")
-            path = showPrompt("path")
-            print("Crittazione in corso...")
-            obj.Crypt(readFile(path))
-            print("File criptato.")
-            print("\nFile salvato in: ["+saveFile(path+".crypt",obj.resJSON)+"]")
-            input("\nPremi INVIO per continuare")
+           
         except Exception as e:
-            print(str(e))
+            tb = traceback.format_exc()
+            print(tb) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
         try:
@@ -154,15 +229,8 @@ while True:
             print("\nCHIAVE PRIVATA")
             path = showPrompt("path")
             psw = getpass("Inserisci la password per la chiave privata: ")
-            obj.ImportPrivKey(readFile(path),psw)
-            print("\n FILE CRIPTATO")
-            path = showPrompt("path")
-            tmp = obj.Decrypt(json.loads(readFile(path)))
-            clear()
-            print("FILE DECRITTATO")
-            path = showPrompt("path")
-            print("\nFile decrittato salvato in: ["+saveFile(path,tmp)+"]")
-            input("\nPremi INVIO per continuare")
+            cert.ImportKey(readFile(path),'priv',psw)
+            
         except Exception as e:
             tb = traceback.format_exc()
             if str(e) == "MAC check failed":
