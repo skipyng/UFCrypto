@@ -184,9 +184,9 @@ def showPrompt(type:str):
 
 ##############################################
 
-cert = Certificato()
 
-def ImportKeyCert():
+
+def ImportKeyCert(cert:Certificato):
     clear()
     print("CERTIFICATO ESISTENTE")
     path = showPrompt("path")
@@ -207,6 +207,7 @@ def ImportKeyCert():
     clear()
 
 while True:
+    cert = Certificato()
     clear()
     tmp = showPrompt("init")
     if tmp == 1:
@@ -223,7 +224,7 @@ while True:
                 print("\nFile salvato in: ["+saveFile(path+".cert",cert.resJSON)+"]")
                 print("\nChiave privata salvata in: ["+saveFile("key.priv",cert.Privkey.encode('utf-8'))+"]")
             elif newCert.upper() == "N": 
-                ImportKeyCert()
+                ImportKeyCert(cert)
             else:
                 print("Parametro non valido")
                 continue
@@ -234,7 +235,7 @@ while True:
             print(tb) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
-        ImportKeyCert()
+        ImportKeyCert(cert)
         print("TODO")
     elif tmp == 3:
         break
