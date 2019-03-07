@@ -22,16 +22,18 @@ class Crittografia():
             key = RSA.generate(2048)
             self.__privkey = key.export_key(passphrase = password)
             self.__pubkey = key.publickey()
-           
+            return key
         except Exception as e:
             print(str(e))
             input()
          
     def ImportPubKey(self,key:bytes):
         self.__pubkey = RSA.import_key(key)
+        return self.__pubkey
 
     def ImportPrivKey(self,key:bytes, password:str):
         self.__privkey = RSA.import_key(key,password)
+        return self.__privkey
 
     def Crypt(self,content:bytes):
         cipher = PKCS1_OAEP.new(self.__pubkey)
@@ -76,23 +78,20 @@ class Certificato():
 MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdqBTMZ+Mmv9mYlvXE410J8rpWfm/
 vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
 -----END PUBLIC KEY-----""")
+        self.__critt = Crittografia()
     
     def GeneraCert(self, id:str, password:str):
-        self.__key = ECC.generate(curve='P-256')
-        prk_settings = {
-            'format': 'PEM',
-            'passphrase': password,
-            'protection': 'scryptAndAES256-CBC'
-            }
-        self.__privkey = self.__key.export_key(**prk_settings)
-        self.__pubkey = self.__key.public_key()
+
+        self.__key = self.__critt.GenerateKey(psw)
+        self.__privkey = self.__key.export_key()
+        self.__pubkey = self.__key.publickey()
         self.Serialize(id)     
     
     def ImportKey(self, keyIn:str, type:str, psw=None):
         if type == "pub":
-            self.__pubkey = ECC.import_key(keyIn)
+            self.__pubkey = self.__critt.ImportPubKey(keyIn)
         elif type == "priv":
-            self.__privkey = ECC.import_key(keyIn,psw)
+            self.__privkey = self.__critt.ImportPrivKey(keyIn,psw)
 
     def VerificaFirma(self, content:bytes, pubkey, sign):
         try:
@@ -126,7 +125,7 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
                 
     
     def Serialize(self, id:str):
-        pubk_str = self.__pubkey.export_key(format='PEM')
+        pubk_str = self.__pubkey.export_key(format='PEM').decode('utf-8')
         #print(pubk_str)
         tmp = {'id': id, 'pubk':pubk_str,'sig':''}
         self.__resJSON = json.dumps(tmp).encode('utf-8')
@@ -208,6 +207,7 @@ def ImportKeyCert(cert:Certificato):
 
 while True:
     cert = Certificato()
+    critt = Crittografia()
     clear()
     tmp = showPrompt("init")
     if tmp == 1:
@@ -222,14 +222,14 @@ while True:
                 print("CERTIFICATO GENERATO")
                 path = showPrompt("path")
                 print("\nFile salvato in: ["+saveFile(path+".cert",cert.resJSON)+"]")
-                print("\nChiave privata salvata in: ["+saveFile("key.priv",cert.Privkey.encode('utf-8'))+"]")
+                print("\nChiave privata salvata in: ["+saveFile("key.priv",cert.Privkey)+"]")
+                input()
             elif newCert.upper() == "N": 
                 ImportKeyCert(cert)
             else:
                 print("Parametro non valido")
                 continue
-            # File "bersaglio" #
-           
+
         except:
             print(traceback.format_exc()) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
