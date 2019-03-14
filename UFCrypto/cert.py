@@ -81,7 +81,6 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
         self.__critt = Crittografia()
     
     def GeneraCert(self, id:str, password:str):
-
         self.__key = self.__critt.GenerateKey(psw)
         self.__privkey = self.__key.export_key()
         self.__pubkey = self.__key.publickey()
@@ -93,19 +92,22 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
         elif type == "priv":
             self.__privkey = self.__critt.ImportPrivKey(keyIn,psw)
 
-    def VerificaFirma(self, content:bytes, pubkey, sign):
+    def VerificaFirma(self, content:dict, pubkey):
         try:
-            h = SHA256.new(content)
+            tmp = content['id'].encode('utf-8') + content['pubk'].encode('utf-8')
+            print(tmp)
+            h = SHA256.new(tmp)
             verifier = DSS.new(pubkey,'deterministic-rfc6979')
-            verifier.verify(h, b64decode(sign))
+            verifier.verify(h, b64decode(content['sig']))
             return True
         except ValueError:
+            print(traceback.format_exc()) # DEBUG
             print("FIRMA NON VALIDA")
             return False
         
     def ImportCert(self,certraw, privkey_raw, psw:str):
         cert = self.Deserialize(certraw)
-        if self.VerificaFirma(certraw,self.__pubCA,cert['sig']):
+        if self.VerificaFirma(cert,self.__pubCA):
             print("OK")
             try:
                 self.ImportKey(privkey_raw,'priv',psw)
@@ -115,18 +117,21 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
         else:
             print("SI E' ROTTO")
 
+    def Crypt(self,content:bytes):
+        self.__critt.Crypt(content)
+        return self.__critt.serialize()
 
-    def Firma(self, content:bytes):
-        h = SHA256.new(content)
-        signer = DSS.new(self.__privkey,'deterministic-rfc6979')
-        signed = signer.sign(h)
-
-        self.__sign = b64encode(signed).decode('utf-8')
+    def Decrypt(self,confent:dict):
+        return self.__critt.Decrypt(content)
+    #def Firma(self, content:bytes):
+    #    h = SHA256.new(content)
+    #    signer = DSS.new(self.__privkey,'deterministic-rfc6979')
+    #    signed = signer.sign(h)
+    #    self.__sign = b64encode(signed).decode('utf-8')
                 
     
     def Serialize(self, id:str):
         pubk_str = self.__pubkey.export_key(format='PEM').decode('utf-8')
-        #print(pubk_str)
         tmp = {'id': id, 'pubk':pubk_str,'sig':''}
         self.__resJSON = json.dumps(tmp).encode('utf-8')
 
@@ -197,8 +202,8 @@ def ImportKeyCert(cert:Certificato):
     
     try:
         cert.ImportCert(rawfile,privkey_raw,psw)
+        print("IMPORTAZIONE COMPLETATA")
         input("\nPremi INVIO per continuare")
-
     except Exception as e:
         print("ERRORE DI IMPORTAZIONE")
         print(str(e))
@@ -226,17 +231,35 @@ while True:
                 input()
             elif newCert.upper() == "N": 
                 ImportKeyCert(cert)
+                clear()
+                print("FILE DA CRIPTARE")
+                path = showPrompt("path")
+                print("CRITTAZIONE IN CORSO...")
+                crypted = cert.Crypt(readFile(path))
+                clear()
+                print("FILE CRIPTATO")
+                path = showPrompt("path")
+                print("\nFile salvato in: ["+saveFile(path+".crypt", crypted)+"]")
             else:
                 print("Parametro non valido")
                 continue
-
+            input("\nPremi INVIO per continuare")
+        except IOError:
+            print("File non valido")
+            input("\nPremi INVIO per continuare")
         except:
             print(traceback.format_exc()) # SOLO PER DEBUG
             input("\nPremi INVIO per continuare")
     elif tmp == 2:
         try: 
             ImportKeyCert(cert)
-            print("TODO")
+            print("FILE CRIPTATO")
+            path = showPrompt("path")
+            decrypted = cert.Decrypt(cert.Deserialize(readFile(path)))
+            clear()
+            print("FILE IN CHIARO")
+            path = showPrompt("path")
+            print("\nFile salvato in: ["+saveFile(path, decrypted)+"]")
         except IOError:
             print("FILE NON VALIDO")
         except :
