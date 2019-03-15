@@ -98,13 +98,11 @@ class Certificato():
     def VerificaFirma(self, content:dict, pubkey):
         try:
             tmp = content['id'].encode('utf-8') + content['pubk'].encode('utf-8')
-            print(tmp)
             h = SHA256.new(tmp)
             verifier = DSS.new(pubkey,'deterministic-rfc6979')
             verifier.verify(h, b64decode(content['sig']))
             return True
         except ValueError:
-            print(traceback.format_exc()) # DEBUG
             print("FIRMA NON VALIDA")
             return False
         
@@ -194,6 +192,7 @@ def showPrompt(type:str):
 
 
 def ImportKeyCert(cert:Certificato):
+    # Importa chiave CA
     print("CHIAVE PUBBLICA CA")
     path = showPrompt("path")
     print("IMPORTAZIONE CHIAVE PUBBLICA CA")
@@ -201,6 +200,7 @@ def ImportKeyCert(cert:Certificato):
     print("CHIAVE CA IMPORTATA")
     input("\nPremi INVIO per continuare")
     clear()
+    # Importa certificato
     print("CERTIFICATO ESISTENTE")
     path = showPrompt("path")
     rawfile = readFile(path)
@@ -228,6 +228,7 @@ while True:
         try:
             # Scelta utilizzo certificato #
             newCert = input("Generare un certificato? S/N ")
+            # Generazione certificato e chiave privata
             if newCert.upper() == "S": 
                 psw = showPrompt("password")
                 cert.GeneraCert('micheleschelfi',psw)                
@@ -239,11 +240,14 @@ while True:
                 print("\nChiave privata salvata in: ["+saveFile("key.priv",cert.Privkey)+"]")
                 input()
             elif newCert.upper() == "N": 
+                # Importazione chiave privata e certificato
                 ImportKeyCert(cert)
                 clear()
+                # File bersaglio
                 print("FILE DA CRIPTARE")
                 path = showPrompt("path")
                 print("CRITTAZIONE IN CORSO...")
+                # Cifra file
                 crypted = cert.Crypt(readFile(path))
                 clear()
                 print("FILE CRIPTATO")
@@ -264,6 +268,7 @@ while True:
             ImportKeyCert(cert)
             print("FILE CRIPTATO")
             path = showPrompt("path")
+            # Decifra file
             decrypted = cert.Decrypt(cert.Deserialize(readFile(path)))
             clear()
             print("FILE IN CHIARO")
