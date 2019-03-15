@@ -74,10 +74,11 @@ class Crittografia():
 
 class Certificato():
     def __init__(self):
-        self.__pubCA = ECC.import_key("""-----BEGIN PUBLIC KEY-----
-MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdqBTMZ+Mmv9mYlvXE410J8rpWfm/
-vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
------END PUBLIC KEY-----""")
+        self.__pubCA = None
+#        self.__pubCA = ECC.import_key("""-----BEGIN PUBLIC KEY-----
+#MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEdqBTMZ+Mmv9mYlvXE410J8rpWfm/
+#vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
+#-----END PUBLIC KEY-----""")
         self.__critt = Crittografia()
     
     def GeneraCert(self, id:str, password:str):
@@ -91,6 +92,8 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
             self.__pubkey = self.__critt.ImportPubKey(keyIn)
         elif type == "priv":
             self.__privkey = self.__critt.ImportPrivKey(keyIn,psw)
+        elif type == "CA":
+            self.__pubCA = ECC.import_key(keyIn)
 
     def VerificaFirma(self, content:dict, pubkey):
         try:
@@ -121,7 +124,7 @@ vxl6y+pWhVFLPKNs++iyWCiuTP+Y3un7c4ACzfwn++aDG/Gf4yWI0S0WPg==
         self.__critt.Crypt(content)
         return self.__critt.serialize()
 
-    def Decrypt(self,confent:dict):
+    def Decrypt(self,content:dict):
         return self.__critt.Decrypt(content)
     #def Firma(self, content:bytes):
     #    h = SHA256.new(content)
@@ -191,6 +194,12 @@ def showPrompt(type:str):
 
 
 def ImportKeyCert(cert:Certificato):
+    print("CHIAVE PUBBLICA CA")
+    path = showPrompt("path")
+    print("IMPORTAZIONE CHIAVE PUBBLICA CA")
+    cert.ImportKey(readFile(path),"CA")
+    print("CHIAVE CA IMPORTATA")
+    input("\nPremi INVIO per continuare")
     clear()
     print("CERTIFICATO ESISTENTE")
     path = showPrompt("path")
